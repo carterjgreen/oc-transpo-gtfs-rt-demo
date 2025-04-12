@@ -1,0 +1,50 @@
+---
+services:
+  bento:
+    container_name: bento
+    image: ghcr.io/warpstreamlabs/bento
+    environment:
+      - TZ=America/Toronto
+    env_file: .env
+    volumes:
+      - ./bento.yaml:/bento.yaml
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:4195/ready"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+  mosquitto:
+    container_name: mosquitto
+    image: eclipse-mosquitto
+    environment:
+      - TZ=America/Toronto
+    ports:
+      - 1883:1883
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 mosquitto_sub -h localhost -p 1883 -t 'topic' -E -i probe"]
+      interval: 10s
+      timeout: 30s
+      retries: 3
+      start_period: 3s
+  grafana:
+    container_name: grafana
+    image: grafana/grafana
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - ./oc_transpo_dashboard.json:/dashboards/oc_transpo_dashboard.json
+    ports:
+      - 3000:3000
+    environment:
+      - GF_PLUGINS_PREINSTALL=grafana-mqtt-datasource
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/dashboards/oc_transpo_dashboard.json
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f localhost:3000/api/health && echo 'ready'"]
+      interval: 10s
+      retries: 3

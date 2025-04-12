@@ -1,0 +1,1 @@
+[.Entity[].Vehicle | {tripId: .Trip.TripId, vehcleId: .Vehicle.Id, routeId: .Trip.RouteId, timestamp: .Timestamp | todateiso8601, latitude: .Position.Latitude, longitude: .Position.Longitude, bearing: .Position.Bearing, speed: .Position.Speed}]

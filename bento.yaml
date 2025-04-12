@@ -1,0 +1,39 @@
+---
+input:
+  generate:
+    interval: "@every 30s"
+    mapping: "root = {}"
+
+pipeline:
+  processors:
+    - http:
+        url: "https://nextrip-public-api.azure-api.net/octranspo/gtfs-rt-vp/beta/v1/VehiclePositions?format=json"
+        verb: GET
+        headers:
+          Ocp-Apim-Subscription-Key: "${API_KEY}"
+        timeout: 5s
+        parallel: false
+    # Use jq or mapping
+    - mapping: |
+        map vehicle {
+          timestamp = this.Timestamp
+          tripId = this.Trip.TripId
+          vehicleId = this.Vehicle.Id
+          routeId = this.Trip.RouteId
+          latitude = this.Position.Latitude
+          longitude = this.Position.Longitude
+          bearing = this.Position.Bearing
+          speed = this.Position.Speed
+        }
+        root = this.Entity.map_each(item -> item.Vehicle).map_each(item -> item.apply("vehicle"))
+    # - jq:
+    #     query: '[.Entity[].Vehicle | {tripId: .Trip.TripId, vehcleId: .Vehicle.Id, routeId: .Trip.RouteId, timestamp: .Timestamp | todateiso8601, latitude: .Position.Latitude, longitude: .Position.Longitude, bearing: .Position.Bearing, speed: .Position.Speed}]'
+
+output:
+  mqtt:
+    urls: [mosquitto:1883]
+    topic: gtfs
+    client_id: bento
+
+http:
+  enabled: true
